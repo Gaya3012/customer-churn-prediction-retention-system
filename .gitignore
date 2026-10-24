@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+.pytest_cache/
+.idea/
+.vscode/
+
+# Generated datasets, trained models, evaluation outputs, and figures
+data/*.csv
+models/*.joblib
+reports/*
+!reports/.gitkeep
+!models/.gitkeep
+!data/.gitkeep
+!static/images/.gitkeep

@@ -1,0 +1,113 @@
+:root {
+  --ink: #172b4d;
+  --muted: #66758c;
+  --brand: #3157d5;
+  --surface: #ffffff;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--ink);
+  background: #f4f7fc;
+}
+
+.navbar {
+  background: #142443;
+}
+
+.navbar-text {
+  color: #c6d1e5;
+  font-size: .9rem;
+}
+
+.hero {
+  padding: 1.5rem 0;
+}
+
+.hero .lead {
+  max-width: 720px;
+  color: var(--muted);
+}
+
+.eyebrow {
+  color: var(--brand);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.form-card,
+.result-card {
+  border: 1px solid #e5eaf2;
+  border-radius: 1rem;
+  box-shadow: 0 12px 38px rgb(29 52 93 / 7%);
+}
+
+.form-label {
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+.form-select,
+.form-control {
+  min-height: 44px;
+  border-color: #d8e0eb;
+}
+
+.btn-primary {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.btn-primary:hover {
+  border-color: #2546b4;
+  background: #2546b4;
+}
+
+.result-card {
+  max-width: 650px;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: .55rem 1rem;
+  border-radius: 100px;
+  font-weight: 700;
+}
+
+.risk-low {
+  color: #17603b;
+  background: #dff5e9;
+}
+
+.risk-medium {
+  color: #795900;
+  background: #fff1c2;
+}
+
+.risk-high {
+  color: #9b2634;
+  background: #fde3e5;
+}
+
+.probability-wrap,
+.recommendation {
+  max-width: 440px;
+}
+
+.progress {
+  height: .7rem;
+  background: #e8edf5;
+}
+
+.recommendation {
+  padding: 1rem;
+  border: 1px solid #e4eaf4;
+  border-radius: .75rem;
+  background: #f8faff;
+}
+
+.recommendation p {
+  color: #4c5d76;
+  line-height: 1.6;
+}
