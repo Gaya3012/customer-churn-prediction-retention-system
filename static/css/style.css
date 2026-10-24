@@ -111,3 +111,24 @@ body {
   color: #4c5d76;
   line-height: 1.6;
 }
+
+.ai-plan {
+  border-color: #dce5fa;
+  border-radius: .85rem;
+  background: #f8faff;
+}
+
+.ai-plan p,
+.ai-plan li {
+  color: #4c5d76;
+  line-height: 1.6;
+}
+
+.communication-quote {
+  padding: .9rem 1rem;
+  border-left: 3px solid var(--brand);
+  border-radius: .25rem;
+  background: #fff;
+  color: #4c5d76;
+  line-height: 1.7;
+}

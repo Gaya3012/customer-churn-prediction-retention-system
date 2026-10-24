@@ -5,13 +5,16 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from joblib import load
 
 from src.preprocess import model_feature_columns
+from src.retention_assistant import RetentionAssistantError, generate_retention_plan
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "models" / "churn_pipeline.joblib"
+load_dotenv(BASE_DIR / ".env")
 
 CATEGORY_OPTIONS = {
     "gender": ["Female", "Male"],
@@ -160,7 +163,7 @@ def predict_form():
             "index.html", options=CATEGORY_OPTIONS, numeric_fields=NUMERIC_FIELDS,
             model_error=str(error), values=request.form,
         ), 503
-    return render_template("result.html", result=result)
+    return render_template("result.html", result=result, customer=customer)
 
 
 @app.post("/api/predict")
@@ -175,6 +178,33 @@ def predict_api():
         return jsonify(prediction_result(customer))
     except FileNotFoundError as error:
         return jsonify({"error": str(error)}), 503
+
+
+@app.post("/api/retention-plan")
+def retention_plan_api():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Request body must be a JSON object."}), 400
+
+    customer, errors = validate_customer(payload.get("customer"))
+    if errors:
+        return jsonify({"error": "Invalid customer data.", "details": errors}), 400
+
+    supplied_prediction = payload.get("prediction")
+    if not isinstance(supplied_prediction, dict):
+        return jsonify({"error": "A prediction object is required."}), 400
+
+    try:
+        # Recompute the prediction on the server; never trust client-supplied scores.
+        prediction = prediction_result(customer)
+    except FileNotFoundError as error:
+        return jsonify({"error": str(error)}), 503
+
+    try:
+        plan = generate_retention_plan(customer, prediction)
+    except RetentionAssistantError as error:
+        return jsonify({"error": str(error)}), error.status_code
+    return jsonify({"retention_plan": plan})
 
 
 @app.get("/health")

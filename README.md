@@ -10,6 +10,7 @@ An end-to-end machine-learning application that estimates telecom customer churn
 2. `src/train.py` makes a stratified train/test split **before fitting any preprocessing**, trains the three candidate models, evaluates held-out data, writes EDA/evaluation outputs, and saves the best complete pipeline with Joblib.
 3. `src/evaluate.py` calculates accuracy, precision, recall, F1-score, ROC-AUC, and confusion matrices.
 4. `app.py` loads the saved pipeline for browser and JSON predictions and validates incoming values.
+5. `src/retention_assistant.py` uses LangChain's prompt and output parser with Ollama to generate an optional structured retention plan after the ML prediction.
 
 Preprocessing is fit only against the training split and is bundled with the classifier. Unknown categories are safely ignored by the encoder; missing numeric/categorical values use the fitted training-set imputers. `customerID` is excluded from model features. If `TotalCharges` is omitted from a prediction, the app estimates it as `tenure × MonthlyCharges`.
 
@@ -29,6 +30,7 @@ customer-churn-ml/
 ├── requirements.txt
 ├── README.md
 ├── .gitignore
+├── .env.example
 ├── data/
 │   ├── README.md
 │   └── WA_Fn-UseC_-Telco-Customer-Churn.csv  # download and add
@@ -39,6 +41,7 @@ customer-churn-ml/
 │   ├── __init__.py
 │   ├── preprocess.py
 │   ├── evaluate.py
+│   ├── retention_assistant.py
 │   └── train.py
 ├── templates/
 │   ├── index.html
@@ -127,6 +130,79 @@ A successful response has this shape:
 ```
 
 Validation errors return HTTP 400 with field-level details. A missing trained model returns HTTP 503 with instructions to run training.
+
+## AI Retention Assistant (LangChain + Ollama)
+
+The result page includes **Generate AI Retention Plan**. It sends the submitted account profile and displayed ML result to `POST /api/retention-plan`. The server validates the profile and recomputes the prediction using the saved ML pipeline rather than trusting a client-supplied score. LangChain builds the prompt and validates Ollama's response into a structured plan: risk summary, possible churn reasons, recommended actions, suggested offer, and a customer communication draft.
+
+The AI feature is optional and does not change model training or ordinary predictions. If Ollama is stopped, the selected model is missing, the service rate-limits, or the response is invalid, the endpoint returns a useful error and the existing churn prediction remains available. Customer profile information is sent to the configured Ollama server; use local Ollama if you do not want account data sent to a hosted provider. Review AI-generated offers and messages against company policy before use.
+
+### Configure local Ollama (free local inference)
+
+1. Install and start Ollama from [ollama.com/download](https://ollama.com/download).
+2. From PowerShell, download a model:
+
+   ```powershell
+   ollama pull llama3.2
+   ```
+
+   Ollama Desktop normally keeps its local service running. If needed, start it in another terminal with `ollama serve`.
+3. Install this project's Python dependencies (including `langchain-core`, `langchain-ollama`, and `python-dotenv`):
+
+   ```powershell
+   pip install -r requirements.txt
+   ```
+4. Optionally copy the example settings:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+   The defaults use `http://localhost:11434` and `llama3.2`. Change `OLLAMA_BASE_URL` or `OLLAMA_MODEL` in `.env` if needed. **Local Ollama does not require an API key.** For Ollama Cloud only, set `OLLAMA_BASE_URL` to your Ollama Cloud endpoint and put the key in `OLLAMA_API_KEY` inside `.env`. Never put a real key in frontend code or commit `.env`.
+
+5. Start the Flask application after training the ML model:
+
+   ```powershell
+   python app.py
+   ```
+
+Open `http://127.0.0.1:5000`, make a churn assessment, then click **Generate AI Retention Plan**. A loading indicator appears while the plan is created.
+
+### Retention-plan API
+
+`POST /api/retention-plan` accepts the customer fields used by `/api/predict`, nested under `customer`, plus the ML result under `prediction`. The server recomputes the ML prediction before constructing the LLM prompt.
+
+```json
+{
+  "customer": {
+    "gender": "Female",
+    "SeniorCitizen": 0,
+    "Partner": "Yes",
+    "Dependents": "No",
+    "tenure": 12,
+    "PhoneService": "Yes",
+    "MultipleLines": "No",
+    "InternetService": "Fiber optic",
+    "OnlineSecurity": "No",
+    "OnlineBackup": "Yes",
+    "DeviceProtection": "No",
+    "TechSupport": "No",
+    "StreamingTV": "Yes",
+    "StreamingMovies": "Yes",
+    "Contract": "Month-to-month",
+    "PaperlessBilling": "Yes",
+    "PaymentMethod": "Electronic check",
+    "MonthlyCharges": 85.5
+  },
+  "prediction": {
+    "churn_prediction": "Yes",
+    "churn_probability": 0.82,
+    "risk_level": "High"
+  }
+}
+```
+
+The successful response has a `retention_plan` object with `risk_summary`, `possible_reasons`, `recommended_actions`, `suggested_customer_offer`, and `suggested_customer_communication`. Invalid input returns HTTP 400; Ollama Cloud without its key returns HTTP 503; rate limits return HTTP 429; provider or invalid-response errors return an appropriate 502/503.
 
 ## Notes
 

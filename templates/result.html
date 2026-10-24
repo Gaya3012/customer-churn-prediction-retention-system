@@ -27,9 +27,80 @@
           <h2 class="h6 fw-bold">Recommended next step</h2>
           <p class="mb-0">{{ result.retention_recommendation }}</p>
         </div>
+        <button class="btn btn-outline-primary mt-4" id="generate-plan" type="button">
+          Generate AI Retention Plan
+        </button>
+        <div id="plan-status" class="mt-3" role="status" aria-live="polite"></div>
+        <section id="retention-plan" class="ai-plan card text-start mt-4 d-none" aria-live="polite">
+          <div class="card-body">
+            <p class="eyebrow mb-2">AI-ASSISTED CUSTOMER SUCCESS</p>
+            <h2 class="h4 fw-bold mb-3">AI Retention Plan</h2>
+            <h3 class="h6 fw-bold">Risk Summary</h3>
+            <p id="plan-summary"></p>
+            <h3 class="h6 fw-bold">Possible Reasons for Churn</h3>
+            <ul id="plan-reasons"></ul>
+            <h3 class="h6 fw-bold">Recommended Retention Actions</h3>
+            <ul id="plan-actions"></ul>
+            <h3 class="h6 fw-bold">Suggested Customer Offer</h3>
+            <p id="plan-offer"></p>
+            <h3 class="h6 fw-bold">Suggested Customer Communication</h3>
+            <blockquote id="plan-communication" class="communication-quote mb-0"></blockquote>
+            <p class="small text-secondary mt-3 mb-0">AI suggestions should be reviewed against customer context and company policy.</p>
+          </div>
+        </section>
         <a class="btn btn-primary mt-4" href="/">Assess another customer</a>
       </div>
     </div>
   </main>
+  <script>
+    const customer = {{ customer|tojson }};
+    const prediction = {{ result|tojson }};
+    const button = document.getElementById("generate-plan");
+    const status = document.getElementById("plan-status");
+    const planCard = document.getElementById("retention-plan");
+
+    function fillList(elementId, items) {
+      const list = document.getElementById(elementId);
+      list.replaceChildren();
+      items.forEach((item) => {
+        const entry = document.createElement("li");
+        entry.textContent = item;
+        list.appendChild(entry);
+      });
+    }
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      planCard.classList.add("d-none");
+      status.className = "mt-3 text-secondary";
+      status.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Generating a personalized plan…';
+
+      try {
+        const response = await fetch("/api/retention-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customer, prediction })
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          throw new Error(body.error || "The AI retention plan could not be generated.");
+        }
+
+        const plan = body.retention_plan;
+        document.getElementById("plan-summary").textContent = plan.risk_summary;
+        fillList("plan-reasons", plan.possible_reasons);
+        fillList("plan-actions", plan.recommended_actions);
+        document.getElementById("plan-offer").textContent = plan.suggested_customer_offer;
+        document.getElementById("plan-communication").textContent = plan.suggested_customer_communication;
+        status.textContent = "";
+        planCard.classList.remove("d-none");
+      } catch (error) {
+        status.className = "alert alert-warning mt-3";
+        status.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html>
